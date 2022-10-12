@@ -44,7 +44,7 @@ func writeLines(lines map[string]int, path string) error {
 	})
 
 	for _, k := range keys {
-		fmt.Fprintln(w, k, "\nResponse Body Size: ", lines[k], "KB")
+		fmt.Fprintln(w, k, "\nResponse Body Size: ", lines[k], "\n")
 	}
 	return w.Flush()
 }
