@@ -1,4 +1,4 @@
-# get_url_sort_by_body_size
+# Visit Url and Write URL : Resp Body Size Pairs in text file (sorted by small to large body size)
 
 ## To Test
 ```
@@ -31,9 +31,8 @@ https://.......     Resp Body Size : 12.....
 ```
 go install urlcheck.go
 urlcheck
-
 ```
 
-## Possible Syntax Errors
+## Possible Errors
 1. Your url have extra space at the end of each line
 2. Non-url texts in your file
