@@ -21,7 +21,9 @@ So, It will visit each url and rewrite the output result in your same text file.
 ## Output Format
 
 https://.......     Resp Body Size : 12.....
+
 https://.......     Resp Body Size : 12.....
+
 https://.......     Resp Body Size : 12.....
 
 ## To install and run in cli
