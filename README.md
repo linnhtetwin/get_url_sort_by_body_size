@@ -1,4 +1,4 @@
-# Visit Url and Write URL : Resp Body Size Pairs in text file (sorted by small to large body size)
+# Grab & Write URL : Resp Body Size Pairs in text file (sorted by small to large body size)
 
 ## To Test
 ```
