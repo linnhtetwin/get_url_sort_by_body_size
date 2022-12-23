@@ -1,101 +1,59 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
-	"time"
+
+	"github.com/urfave/cli"
 )
 
-const timeout time.Duration = 3 * time.Second
-
-type httpResponse struct {
-	url      string
-	response *http.Response
-	err      error
-}
-
-func asyncHTTPGets(urls []string, ch chan *httpResponse) {
-	for _, url := range urls {
-		go func(url string) {
-			if !strings.HasPrefix(url, "http") {
-				url = string("https://" + url)
-			}
-			resp, err := http.Get(url)
-			ch <- &httpResponse{url, resp, err}
-			fmt.Println("Visiting to", url)
-		}(url)
-	}
-}
-
-func writeLines(lines map[string]int, path string) error {
-	file, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	w := bufio.NewWriter(file)
-	keys := make([]string, 0, len(lines))
-
-	for key := range lines {
-		keys = append(keys, key)
-	}
-	sort.SliceStable(keys, func(i, j int) bool {
-		return lines[keys[i]] < lines[keys[j]]
-	})
-
-	for _, k := range keys {
-		fmt.Fprintln(w, k, "\tResp Body Size: ", lines[k])
-	}
-	return w.Flush()
+type result struct {
+	url   string
+	size  int
+	error error
 }
 
 func main() {
-	fmt.Println("Please locate your URL List (txt) file path ")
-	var filePath string
-	fmt.Scanln(&filePath)
-	data, err := os.Open(filePath)
-	if err != nil {
-		panic(err)
-	}
-	defer data.Close()
+	app := cli.NewApp()
+	app.Name = "url-size"
+	app.Usage = "visit a list of URLs and print their size"
+	app.Action = func(c *cli.Context) error {
+		urls := c.Args()
+		results := make(chan result)
 
-	var lines []string
-	var s = make(map[string]int)
-	scanner := bufio.NewScanner(data)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	responseCount := 0
-	ch := make(chan *httpResponse)
-	go asyncHTTPGets(lines, ch)
-	for responseCount != len(lines) {
-		select {
-		case r := <-ch:
-			if err != nil {
-				panic(err)
-			} else {
-				resp, err := http.Get(r.url)
+		for _, url := range urls {
+			go func(url string) {
+				res, err := http.Get(url)
 				if err != nil {
-					panic(err)
+					results <- result{url: url, error: err}
+					return
 				}
-				defer resp.Body.Close()
-				body, err := ioutil.ReadAll(resp.Body)
-				n := len(body)
-				s[r.url] = n
-			}
-			responseCount++
-		case <-time.After(timeout):
-			os.Exit(1)
+				defer res.Body.Close()
+				results <- result{url: url, size: res.ContentLength}
+			}(url)
 		}
+
+		var sortedResults []result
+		for range urls {
+			sortedResults = append(sortedResults, <-results)
+		}
+
+		sort.Slice(sortedResults, func(i, j int) bool {
+			return sortedResults[i].size < sortedResults[j].size
+		})
+
+		for _, r := range sortedResults {
+			if r.error != nil {
+				fmt.Printf("%s: error: %s\n", r.url, r.error)
+			} else {
+				fmt.Printf("%s: %d bytes\n", r.url, r.size)
+			}
+		}
+
+		return nil
 	}
 
-	if err := writeLines(s, filePath); err != nil {
-		panic(err)
-	}
-	fmt.Println("Done! Please check the output on " + filePath)
+	app.Run(strings.Split("url-size url1 url2 url3 ...", " "))
 }
